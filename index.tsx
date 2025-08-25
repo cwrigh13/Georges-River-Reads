@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, createContext, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -530,7 +531,7 @@ const Header = () => {
           onClick={() => setLanguage('zh')}
           className={`px-3 py-1 text-sm font-sans font-semibold rounded-full transition-colors ${language === 'zh' ? 'bg-white text-primary-dark' : 'bg-primary text-white hover:bg-secondary'}`}
         >
-          ZH
+          CH
         </button>
       </div>
     </header>
@@ -1253,7 +1254,7 @@ const FloatingActionButton = () => {
     return (
         <button
             onClick={() => setIsStartReadingFlowActive(true)}
-            className="fixed bottom-24 sm:bottom-24 right-1/2 translate-x-1/2 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
+            className="fixed bottom-24 sm:bottom-24 right-4 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
             aria-label={t.addANewBook}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1475,7 +1476,7 @@ const Stamp = ({ library, isCollected }) => {
                 {isCollected ? (
                      <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" viewBox="0 0 24 24" aria-label="Collected Stamp">
                         <path fill="#007582" d="M12,1.5l3.09,6.26l6.91,1.01l-5,4.87l1.18,6.88L12,17.25l-6.18,3.25l1.18-6.88l-5-4.87l6.91-1.01L12,1.5z"/>
-                        <path fill="#5DBFC0" d="M12 4.5l2.2 4.46 4.92.72-3.56 3.46.84 4.9L12 15.75l-4.4 2.31.84-4.9-3.56-3.46 4.92.72L12 4.5z"/>
+                        <path fill="#5DBFC0" d="M12 4.5l2.2 4.46 4.92.72-3.56 3.46.84 4.9L12 15.75l-4.4 2.31.84-4.9-3.56 3.46 4.92.72L12 4.5z"/>
                         <path d="M8 12.3l2.7 2.7 5.3-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                     </svg>
                 ) : (
@@ -1609,9 +1610,9 @@ const ProfilePage = () => {
   return (
     <div>
       <h2 className="font-display text-2xl text-secondary mb-3 pb-2 border-b-2 border-lighter text-center">{t.familyMembers}</h2>
-      <div className="bg-white rounded-lg shadow-md divide-y divide-lighter">
+      <div className="space-y-4">
         {readers.map(reader => (
-          <div key={reader.id} className="flex items-center gap-4 p-4">
+          <div key={reader.id} className="bg-white rounded-lg shadow-md flex items-center gap-4 p-4">
             <span className="text-4xl">{reader.avatar}</span>
             <div className="flex-grow">
                 <span className="text-lg font-sans font-medium text-gray-800">{reader.name}</span>
@@ -1699,7 +1700,7 @@ const App = () => {
         {renderPage()}
       </main>
       <BottomNav />
-      <FloatingActionButton />
+      {activePage === 'home' && <FloatingActionButton />}
       <AddReaderModal />
       <ExplorerScannerModal />
       <JoinChallengeModal />
