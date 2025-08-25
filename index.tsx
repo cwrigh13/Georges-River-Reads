@@ -1254,7 +1254,7 @@ const FloatingActionButton = () => {
     return (
         <button
             onClick={() => setIsStartReadingFlowActive(true)}
-            className="fixed bottom-24 sm:bottom-24 right-4 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
             aria-label={t.addANewBook}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1624,9 +1624,6 @@ const ProfilePage = () => {
       <div className="mt-6 space-y-3">
          <button onClick={() => setIsAddReaderModalOpen(true)} className="w-full bg-secondary text-white font-sans font-bold py-3 rounded-lg hover:bg-secondary-dark">
             {t.addReader}
-        </button>
-        <button className="w-full bg-lighter text-primary font-sans font-bold py-3 rounded-lg hover:bg-light">
-            {t.accountSettings}
         </button>
       </div>
     </div>
