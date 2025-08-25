@@ -98,8 +98,7 @@ const translations = {
     // New translations for "Currently Reading" feature
     whatWillYouReadNext: "What will you read next? Tap the '+' to start a new book!",
     addANewBook: "Add a New Book",
-    linkToChallenge: "Link to a Challenge (Optional)",
-    noChallenge: "No Challenge / Just Reading for Fun",
+    linkToChallenge: "Link to a Challenge",
     startReading: "Start Reading",
     logTime: "Log Time",
     imFinished: "I'm Finished",
@@ -114,6 +113,8 @@ const translations = {
     completedBooks: "Completed Books",
     noCompletedBooks: "No Completed Books Yet!",
     noCompletedBooksPrompt: "Finish a book to add it to your collection.",
+    noJoinedChallenges: "No Joined Challenges Yet!",
+    noJoinedChallengesPrompt: "You can start a book without a challenge, or go to the Challenges page to join one.",
   },
   zh: {
     appTitle: "乔治河阅读",
@@ -184,8 +185,7 @@ const translations = {
     // New translations for "Currently Reading" feature
     whatWillYouReadNext: "接下来要读什么？点击“+”开始一本新书！",
     addANewBook: "添加新书",
-    linkToChallenge: "关联一个挑战（可选）",
-    noChallenge: "无挑战/纯属娱乐阅读",
+    linkToChallenge: "关联一个挑战",
     startReading: "开始阅读",
     logTime: "记录时间",
     imFinished: "我读完了",
@@ -200,6 +200,8 @@ const translations = {
     completedBooks: "已完成的书籍",
     noCompletedBooks: "还没有完成的书！",
     noCompletedBooksPrompt: "完成一本书，将其添加到您的收藏中。",
+    noJoinedChallenges: "尚未加入任何挑战！",
+    noJoinedChallengesPrompt: "您可以直接开始阅读，或前往“挑战”页面加入一个新挑战。",
   },
 };
 
@@ -404,6 +406,25 @@ const AppProvider = (props) => {
         progressMinutes: 0,
       };
       setBooks(prevBooks => [...prevBooks, newBook]);
+      
+      // Auto-join the challenge if one is selected and the reader hasn't joined it yet
+      if (challengeId && !currentReader.joinedChallengeIds.includes(challengeId)) {
+        setReaders(prevReaders => {
+          const newReaders = prevReaders.map(reader => {
+            if (reader.id === currentReader.id) {
+              return { ...reader, joinedChallengeIds: [...reader.joinedChallengeIds, challengeId] };
+            }
+            return reader;
+          });
+
+          // Also update the currentReader in context to keep it in sync
+          const updatedCurrentReader = newReaders.find(r => r.id === currentReader.id);
+          if (updatedCurrentReader) {
+            setCurrentReader(updatedCurrentReader);
+          }
+          return newReaders;
+        });
+      }
   };
 
   const logProgress = (bookId, minutes) => {
@@ -1103,42 +1124,50 @@ const ChallengeSelector = ({ onStartReading, onBack, t }) => {
   const { currentReader, challenges } = useAppContext();
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
 
-  const readerCategoryMap = {
-    kids: 'children',
-    teens: 'teens',
-    adults: 'adults',
-  };
-  const readerAgeCategory = readerCategoryMap[currentReader.ageRange];
-
-  const activeChallenges = challenges.filter(challenge => {
-    const isJoined = currentReader.joinedChallengeIds.includes(challenge.id);
-    if (!isJoined) {
-      return false;
-    }
-    
-    // A challenge is valid if it's 'general' or matches the reader's age category
-    const isAgeAppropriate = challenge.category === 'general' || !challenge.category || challenge.category === readerAgeCategory;
-    
-    return isAgeAppropriate;
-  });
+  const joinedChallenges = challenges.filter(challenge => 
+    currentReader.joinedChallengeIds.includes(challenge.id)
+  );
+  
+  const renderCheckbox = (isSelected) => (
+    <div className={`w-6 h-6 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+      isSelected
+        ? 'bg-primary border-primary'
+        : 'bg-white border-gray-400'
+    }`}>
+      {isSelected && (
+        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </div>
+  );
 
   return (
     <div className="p-6">
       <h2 className="font-display text-xl font-bold text-primary mb-4 text-center">{t.linkToChallenge}</h2>
-      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-        {/* No Challenge Option */}
-        <div onClick={() => setSelectedChallengeId(null)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedChallengeId === null ? 'bg-accent text-white border-primary' : 'bg-lighter hover:bg-light border-lighter'}`}>
-          <div className="text-2xl">📖</div>
-          <span className="font-sans font-medium">{t.noChallenge}</span>
+      {joinedChallenges.length > 0 ? (
+        <div className="space-y-1">
+          {joinedChallenges.map(challenge => (
+            <div 
+              key={challenge.id} 
+              onClick={() => setSelectedChallengeId(challenge.id)} 
+              className="flex items-center gap-4 py-2 px-3 rounded-lg cursor-pointer hover:bg-lighter"
+              role="radio"
+              aria-checked={selectedChallengeId === challenge.id}
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') setSelectedChallengeId(challenge.id)}}
+            >
+              {renderCheckbox(selectedChallengeId === challenge.id)}
+              <span className="font-sans font-medium text-gray-800 truncate">{challenge.title}</span>
+            </div>
+          ))}
         </div>
-        {/* Active Challenges */}
-        {activeChallenges.map(challenge => (
-          <div key={challenge.id} onClick={() => setSelectedChallengeId(challenge.id)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedChallengeId === challenge.id ? 'bg-accent text-white border-primary' : 'bg-lighter hover:bg-light border-lighter'}`}>
-            <div className="text-2xl">{challenge.badge}</div>
-            <span className="font-sans font-medium truncate">{challenge.title}</span>
-          </div>
-        ))}
-      </div>
+      ) : (
+        <div className="text-center text-gray-600 font-sans p-4 bg-lightest rounded-lg">
+          <p className="font-semibold">{t.noJoinedChallenges}</p>
+          <p className="text-sm mt-1">{t.noJoinedChallengesPrompt}</p>
+        </div>
+      )}
       <div className="mt-6 flex justify-between items-center gap-3">
         <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
         <button type="button" onClick={() => onStartReading(selectedChallengeId)} className="px-5 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark flex items-center gap-2">
