@@ -16,6 +16,16 @@ type Reader = {
   progress: ReaderProgress;
 };
 
+type Book = {
+  id: number;
+  readerId: number;
+  title: string;
+  author?: string;
+  status: 'reading' | 'finished' | 'to-read';
+  challengeId?: number | null;
+  progressMinutes: number;
+};
+
 // --- MOCK DATA ---
 
 const translations = {
@@ -85,6 +95,25 @@ const translations = {
     next: "Next",
     back: "Back",
     loggingFor: "Logging for:",
+    // New translations for "Currently Reading" feature
+    whatWillYouReadNext: "What will you read next? Tap the '+' to start a new book!",
+    addANewBook: "Add a New Book",
+    linkToChallenge: "Link to a Challenge (Optional)",
+    noChallenge: "No Challenge / Just Reading for Fun",
+    startReading: "Start Reading",
+    logTime: "Log Time",
+    imFinished: "I'm Finished",
+    howManyMinutes: "How many minutes did you read today?",
+    congratulations: "Congratulations!",
+    markAsFinished: "Mark '{bookTitle}' as finished?",
+    yesImFinished: "Yes, I'm Finished!",
+    notYet: "Not Yet",
+    currentlyReading: "Currently Reading",
+    linkedTo: "Linked to:",
+    startNewBook: "Start a New Book",
+    completedBooks: "Completed Books",
+    noCompletedBooks: "No Completed Books Yet!",
+    noCompletedBooksPrompt: "Finish a book to add it to your collection.",
   },
   zh: {
     appTitle: "乔治河阅读",
@@ -152,13 +181,39 @@ const translations = {
     next: "下一步",
     back: "返回",
     loggingFor: "记录:",
+    // New translations for "Currently Reading" feature
+    whatWillYouReadNext: "接下来要读什么？点击“+”开始一本新书！",
+    addANewBook: "添加新书",
+    linkToChallenge: "关联一个挑战（可选）",
+    noChallenge: "无挑战/纯属娱乐阅读",
+    startReading: "开始阅读",
+    logTime: "记录时间",
+    imFinished: "我读完了",
+    howManyMinutes: "今天你读了多少分钟？",
+    congratulations: "恭喜！",
+    markAsFinished: "确定将《{bookTitle}》标记为已读完吗？",
+    yesImFinished: "是的，我读完了！",
+    notYet: "还没",
+    currentlyReading: "正在阅读",
+    linkedTo: "关联于:",
+    startNewBook: "开始一本新书",
+    completedBooks: "已完成的书籍",
+    noCompletedBooks: "还没有完成的书！",
+    noCompletedBooksPrompt: "完成一本书，将其添加到您的收藏中。",
   },
 };
 
 const initialReaders: Reader[] = [
-  { id: 1, name: 'Dad', avatar: '👨‍🦰', ageRange: 'adults', joinedChallengeIds: [1, 15], progress: { 1: 600, 15: 1 } },
+  { id: 1, name: 'Dad', avatar: '👨‍🦰', ageRange: 'adults', joinedChallengeIds: [1, 15], progress: { 1: 120, 15: 1 } },
   { id: 2, name: 'Maya', avatar: '👧', ageRange: 'kids', joinedChallengeIds: [4, 7, 14], progress: { 4: 12, 7: 1, 14: 1 } },
   { id: 3, name: 'Leo', avatar: '👦', ageRange: 'kids', joinedChallengeIds: [5], progress: { 5: 4 } },
+];
+
+const initialBooks: Book[] = [
+  { id: 1, readerId: 1, title: 'Journey to the West', author: 'Wu Cheng\'en', status: 'reading', challengeId: 1, progressMinutes: 120 },
+  { id: 2, readerId: 2, title: 'The Peasant Prince', author: 'Li Cunxin', status: 'reading', challengeId: 4, progressMinutes: 30 },
+  { id: 3, readerId: 2, title: 'I am a Dragon', author: 'Ying Chang Compestine', status: 'finished', challengeId: 4, progressMinutes: 60 },
+  { id: 4, readerId: 3, title: 'Bilingual Bookworm Stories', author: 'Author', status: 'reading', challengeId: 5, progressMinutes: 0 },
 ];
 
 const initialChallenges = [
@@ -269,7 +324,8 @@ const AppProvider = (props) => {
   const [isExplorerScannerModalOpen, setIsExplorerScannerModalOpen] = useState(false);
   const [isJoinChallengeModalOpen, setIsJoinChallengeModalOpen] = useState(false);
   const [managingChallengeId, setManagingChallengeId] = useState(null);
-  const [isLoggingFlowActive, setIsLoggingFlowActive] = useState(false);
+  const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [isStartReadingFlowActive, setIsStartReadingFlowActive] = useState(false);
 
 
   const t = translations[language];
@@ -293,26 +349,22 @@ const AppProvider = (props) => {
         const shouldJoin = participatingReaderIds.includes(reader.id);
 
         if (shouldJoin && !hasJoined) {
-          // Add challenge
           return { ...reader, joinedChallengeIds: [...reader.joinedChallengeIds, challengeId] };
         } else if (!shouldJoin && hasJoined) {
-          // Remove challenge
           return { ...reader, joinedChallengeIds: reader.joinedChallengeIds.filter(id => id !== challengeId) };
         }
-        return reader; // No change for this reader
+        return reader;
       });
 
-      // Also update the currentReader in context if they were modified
       const updatedCurrentReader = newReaders.find(r => r.id === currentReader.id);
       if (updatedCurrentReader) {
         setCurrentReader(updatedCurrentReader);
       }
-
       return newReaders;
     });
   };
 
-  const logReadingProgress = (challengeId, minutes) => {
+  const updateChallengeProgress = (challengeId, value) => {
     let updatedReader;
     setReaders(prevReaders =>
       prevReaders.map(reader => {
@@ -321,7 +373,7 @@ const AppProvider = (props) => {
           if (!challenge) return reader;
 
           const currentProgress = reader.progress?.[challengeId] || 0;
-          const newProgress = currentProgress + minutes;
+          const newProgress = currentProgress + value;
           
           updatedReader = {
             ...reader,
@@ -341,6 +393,62 @@ const AppProvider = (props) => {
     }
   };
   
+  const startReading = (bookDetails, challengeId) => {
+      const newBook: Book = {
+        id: Date.now(),
+        readerId: currentReader.id,
+        title: bookDetails.title,
+        author: bookDetails.author,
+        status: 'reading',
+        challengeId,
+        progressMinutes: 0,
+      };
+      setBooks(prevBooks => [...prevBooks, newBook]);
+  };
+
+  const logProgress = (bookId, minutes) => {
+      let bookToUpdate;
+      setBooks(prevBooks =>
+        prevBooks.map(book => {
+          if (book.id === bookId) {
+            bookToUpdate = {
+              ...book,
+              progressMinutes: book.progressMinutes + minutes,
+            };
+            return bookToUpdate;
+          }
+          return book;
+        })
+      );
+  
+      if (bookToUpdate?.challengeId) {
+        const challenge = challenges.find(c => c.id === bookToUpdate.challengeId);
+        if (challenge && challenge.unit === 'mins') {
+          updateChallengeProgress(bookToUpdate.challengeId, minutes);
+        }
+      }
+  };
+  
+  const finishBook = (bookId) => {
+      let finishedBook;
+      setBooks(prevBooks =>
+        prevBooks.map(book => {
+          if (book.id === bookId) {
+            finishedBook = { ...book, status: 'finished' };
+            return finishedBook;
+          }
+          return book;
+        })
+      );
+
+      if (finishedBook?.challengeId) {
+        const challenge = challenges.find(c => c.id === finishedBook.challengeId);
+        if (challenge && challenge.unit === 'books') {
+          updateChallengeProgress(finishedBook.challengeId, 1);
+        }
+      }
+  };
+
   const collectStamp = (qrCodeValue) => {
     setCollectedStamps(prevStamps => {
         if (prevStamps.includes(qrCodeValue)) {
@@ -363,8 +471,8 @@ const AppProvider = (props) => {
     isJoinChallengeModalOpen, setIsJoinChallengeModalOpen,
     managingChallengeId, setManagingChallengeId,
     updateChallengeParticipants,
-    logReadingProgress,
-    isLoggingFlowActive, setIsLoggingFlowActive,
+    books, startReading, logProgress, finishBook,
+    isStartReadingFlowActive, setIsStartReadingFlowActive,
     t, // translations
   };
 
@@ -494,7 +602,7 @@ const ReaderSelector = () => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md text-center relative max-w-md mx-auto">
+    <div className="bg-white p-4 rounded-lg shadow-md text-center relative">
       <h2 className="text-sm font-sans font-medium text-gray-500 mb-2">{t.currentReader}</h2>
       <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center justify-center gap-4 w-full">
         <span className="text-5xl">{currentReader.avatar}</span>
@@ -772,9 +880,192 @@ const JoinChallengeModal = () => {
     );
 };
 
-// --- NEW LOGGING FLOW COMPONENTS ---
+// --- NEW BOOK MANAGEMENT COMPONENTS ---
 
-const ManualEntryForm = ({ onNext, onCancel, t }) => {
+const LogTimeModal = ({ book, onSave, onClose, t }) => {
+  const minutesInputRef = useRef(null);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const minutes = parseInt(minutesInputRef.current.value, 10);
+    if (!isNaN(minutes) && minutes > 0) {
+      onSave(minutes);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40" role="dialog" aria-modal="true">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
+        <form onSubmit={handleSubmit}>
+          <h2 className="font-display text-xl font-bold text-primary mb-2 text-center">{t.logTime}</h2>
+          <p className="text-center font-sans text-gray-600 mb-4 truncate">{book.title}</p>
+          <label htmlFor="minutes" className="block text-sm font-sans font-medium text-gray-700">{t.howManyMinutes}</label>
+          <input
+            ref={minutesInputRef}
+            type="number"
+            id="minutes"
+            name="minutes"
+            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+            placeholder="e.g., 30"
+            required
+            min={1}
+            autoFocus
+          />
+          <div className="mt-6 flex justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.cancel}</button>
+            <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.save}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const FinishBookModal = ({ book, onConfirm, onClose, t }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40" role="dialog" aria-modal="true">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4 text-center">
+        <h2 className="font-display text-2xl font-bold text-primary mb-2">{t.congratulations} 🎉</h2>
+        <p className="font-sans text-gray-700 mb-6">{t.markAsFinished.replace('{bookTitle}', book.title)}</p>
+        <div className="flex flex-col gap-3">
+          <button onClick={onConfirm} className="w-full px-4 py-3 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.yesImFinished}</button>
+          <button onClick={onClose} className="w-full px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.notYet}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CurrentlyReadingCard = ({ book }) => {
+  const { t, challenges, logProgress, finishBook } = useAppContext();
+  const [activeModal, setActiveModal] = useState<'log' | 'finish' | null>(null);
+
+  const linkedChallenge = challenges.find(c => c.id === book.challengeId);
+
+  const handleLogSave = (minutes) => {
+    logProgress(book.id, minutes);
+    setActiveModal(null);
+  };
+
+  const handleFinishConfirm = () => {
+    finishBook(book.id);
+    setActiveModal(null);
+  };
+  
+  const shouldShowProgressBar = linkedChallenge && linkedChallenge.unit === 'mins';
+  const progressPercentage = shouldShowProgressBar 
+    ? Math.min(100, Math.round((book.progressMinutes / linkedChallenge.goal) * 100)) 
+    : 0;
+
+  return (
+    <>
+      <div className="bg-white p-4 rounded-lg shadow-md flex flex-col gap-3">
+        <div className="flex gap-4 items-start">
+          <div className="w-16 h-24 bg-lighter rounded flex items-center justify-center text-4xl text-primary flex-shrink-0">
+            {book.title.charAt(0)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-sans font-bold text-lg text-primary-dark truncate">{book.title}</h3>
+            {book.author && <p className="text-sm font-sans text-gray-500 mb-2 truncate">by {book.author}</p>}
+            {linkedChallenge && (
+              <div className="text-xs font-sans text-gray-600 bg-lightest px-2 py-1 rounded inline-flex items-center gap-1">
+                <span>{linkedChallenge.badge}</span>
+                <span className="font-medium">{t.linkedTo}</span>
+                <span className="truncate">{linkedChallenge.title}</span>
+              </div>
+            )}
+            {shouldShowProgressBar && (
+              <div className="mt-2">
+                <div className="w-full bg-lighter rounded-full h-2.5">
+                  <div className="bg-accent h-2.5 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
+                </div>
+                <div className="text-xs font-sans text-gray-500 mt-1 flex justify-end">
+                    <span>{book.progressMinutes} / {linkedChallenge.goal} {t.mins}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-lighter">
+          <button onClick={() => setActiveModal('log')} className="flex items-center justify-center gap-2 px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
+            <span>{t.logTime}</span>
+          </button>
+          <button onClick={() => setActiveModal('finish')} className="flex items-center justify-center gap-2 px-4 py-2 bg-secondary text-white rounded-md font-sans font-semibold hover:bg-secondary-dark transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+            <span>{t.imFinished}</span>
+          </button>
+        </div>
+      </div>
+      {activeModal === 'log' && <LogTimeModal book={book} onSave={handleLogSave} onClose={() => setActiveModal(null)} t={t} />}
+      {activeModal === 'finish' && <FinishBookModal book={book} onConfirm={handleFinishConfirm} onClose={() => setActiveModal(null)} t={t} />}
+    </>
+  );
+};
+
+const CurrentlyReadingShelf = () => {
+    const { t, books, currentReader } = useAppContext();
+    const currentlyReadingBooks = books.filter(b => b.readerId === currentReader.id && b.status === 'reading');
+    
+    return (
+        <div>
+            <h2 className="font-display text-2xl text-secondary mt-6 mb-3 pb-2 border-b-2 border-lighter text-center">{t.currentlyReading}</h2>
+            {currentlyReadingBooks.length > 0 ? (
+                <div className="space-y-4">
+                    {currentlyReadingBooks.map(book => <CurrentlyReadingCard key={book.id} book={book} />)}
+                </div>
+            ) : (
+                <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                    <p className="font-sans text-lg text-primary mb-2">📖</p>
+                    <p className="text-sm font-sans text-gray-600">{t.whatWillYouReadNext}</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CompletedBooksShelf = () => {
+    const { t, books, currentReader, challenges } = useAppContext();
+    const completedBooks = books.filter(b => b.readerId === currentReader.id && b.status === 'finished');
+
+    return (
+        <div>
+            <h2 className="font-display text-2xl text-secondary mt-6 mb-3 pb-2 border-b-2 border-lighter text-center">{t.completedBooks}</h2>
+            {completedBooks.length > 0 ? (
+                <div className="space-y-4">
+                    {completedBooks.map(book => {
+                        const linkedChallenge = challenges.find(c => c.id === book.challengeId);
+                        return (
+                            <div key={book.id} className="bg-white p-4 rounded-lg shadow-md flex items-start gap-3">
+                                <span className="text-green-500 mt-1 flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-sans font-semibold text-primary-dark truncate">{book.title}</p>
+                                    {book.author && <p className="text-sm font-sans text-gray-600 truncate">by {book.author}</p>}
+                                    {linkedChallenge && (
+                                        <div className="text-xs font-sans text-gray-600 bg-lightest px-2 py-1 rounded inline-flex items-center gap-1 mt-1">
+                                            <span>{linkedChallenge.badge}</span>
+                                            <span className="truncate">{linkedChallenge.title}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                    <p className="font-sans font-bold text-gray-700">{t.noCompletedBooks}</p>
+                    <p className="text-sm font-sans text-gray-500">{t.noCompletedBooksPrompt}</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const ManualEntryFormNew = ({ onNext, onCancel, t }) => {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
 
@@ -787,194 +1078,111 @@ const ManualEntryForm = ({ onNext, onCancel, t }) => {
 
   return (
     <form onSubmit={handleSubmit} className="p-6">
-      <h2 id="log-reading-title" className="font-display text-2xl font-bold text-primary mb-6 text-center">{t.logYourReading}</h2>
+      <h2 id="start-reading-title" className="font-display text-2xl font-bold text-primary mb-6 text-center">{t.startNewBook}</h2>
       <div className="space-y-4">
         <div>
           <label htmlFor="bookTitle" className="block text-sm font-sans font-medium text-gray-700 mb-1">{t.title}</label>
-          <input
-            type="text"
-            id="bookTitle"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-            placeholder="e.g., The Very Hungry Caterpillar"
-            required
-          />
+          <input type="text" id="bookTitle" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-gray-900" placeholder="e.g., The Very Hungry Caterpillar" required />
         </div>
         <div>
           <label htmlFor="bookAuthor" className="block text-sm font-sans font-medium text-gray-700 mb-1">{t.authorOptional}</label>
-          <input
-            type="text"
-            id="bookAuthor"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-            placeholder="e.g., Eric Carle"
-          />
+          <input type="text" id="bookAuthor" value={author} onChange={(e) => setAuthor(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-gray-900" placeholder="e.g., Eric Carle" />
         </div>
       </div>
       <div className="mt-8 flex justify-end gap-3">
         <button type="button" onClick={onCancel} className="px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.cancel}</button>
-        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.next}</button>
+        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark flex items-center gap-2">
+            {t.next} <span className="font-bold">→</span>
+        </button>
       </div>
     </form>
   );
 };
 
-const LogTimeScreen = ({ bookDetails, onLog, onBack, t }) => {
-  const { currentReader, challenges, logReadingProgress, setActivePage } = useAppContext();
-  const minutesInputRef = useRef(null);
-  const [selectedChallengeIds, setSelectedChallengeIds] = useState([]);
-  
+const ChallengeSelector = ({ onStartReading, onBack, t }) => {
+  const { currentReader, challenges } = useAppContext();
+  const [selectedChallengeId, setSelectedChallengeId] = useState(null);
+
   const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
-
-  useEffect(() => {
-    if (activeChallenges.length === 1) {
-      setSelectedChallengeIds([activeChallenges[0].id]);
-    }
-  }, [activeChallenges]);
-  
-  const handleChallengeSelection = (toggledId) => {
-    setSelectedChallengeIds(prevIds => 
-        prevIds.includes(toggledId)
-            ? prevIds.filter(id => id !== toggledId)
-            : [...prevIds, toggledId]
-    );
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const minutes = parseInt(minutesInputRef.current.value, 10);
-    if (isNaN(minutes) || minutes <= 0) return;
-
-    if (activeChallenges.length > 0 && selectedChallengeIds.length === 0) {
-        alert(t.pleaseSelectOneChallenge);
-        return;
-    }
-
-    selectedChallengeIds.forEach(challengeId => {
-        logReadingProgress(challengeId, minutes);
-    });
-    
-    onLog();
-  };
-
-  const handleGoToChallenges = () => {
-    onLog(); // Close the modal first
-    setActivePage('challenges');
-  };
 
   return (
     <div className="p-6">
-      <div className="mb-4 p-3 bg-lightest rounded-md border border-lighter">
-        <p className="text-sm font-sans text-gray-600">{t.loggingFor}</p>
-        <p className="font-sans font-semibold text-primary truncate">{bookDetails.title}</p>
-        {bookDetails.author && <p className="text-sm font-sans text-gray-500">by {bookDetails.author}</p>}
+      <h2 className="font-display text-xl font-bold text-primary mb-4 text-center">{t.linkToChallenge}</h2>
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+        {/* No Challenge Option */}
+        <div onClick={() => setSelectedChallengeId(null)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedChallengeId === null ? 'bg-accent text-white border-primary' : 'bg-lighter hover:bg-light border-lighter'}`}>
+          <div className="text-2xl">📖</div>
+          <span className="font-sans font-medium">{t.noChallenge}</span>
+        </div>
+        {/* Active Challenges */}
+        {activeChallenges.map(challenge => (
+          <div key={challenge.id} onClick={() => setSelectedChallengeId(challenge.id)} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedChallengeId === challenge.id ? 'bg-accent text-white border-primary' : 'bg-lighter hover:bg-light border-lighter'}`}>
+            <div className="text-2xl">{challenge.badge}</div>
+            <span className="font-sans font-medium truncate">{challenge.title}</span>
+          </div>
+        ))}
       </div>
-      {activeChallenges.length > 0 ? (
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-              <label className="block text-sm font-sans font-medium text-gray-700 mb-2">{t.applyToChallenge}</label>
-              <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                  {activeChallenges.map(challenge => (
-                      <div key={challenge.id} className="flex items-center">
-                          <input 
-                              type="checkbox" 
-                              id={`log-challenge-${challenge.id}`} 
-                              value={challenge.id}
-                              checked={selectedChallengeIds.includes(challenge.id)}
-                              onChange={() => handleChallengeSelection(challenge.id)}
-                              className="h-4 w-4 text-primary focus:ring-accent border-gray-300 rounded"
-                          />
-                          <label htmlFor={`log-challenge-${challenge.id}`} className="ml-3 flex items-center text-sm font-sans text-gray-800 cursor-pointer">
-                              <span className="mr-2">{challenge.badge}</span>
-                              <span className="truncate">{challenge.title}</span>
-                          </label>
-                      </div>
-                  ))}
-              </div>
-          </div>
-          <label htmlFor="minutes" className="block text-sm font-sans font-medium text-gray-700">{t.minutesRead}</label>
-          <input
-              ref={minutesInputRef}
-              type="number"
-              id="minutes"
-              name="minutes"
-              className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-              placeholder="e.g., 30"
-              required
-              min={1}
-          />
-          <div className="mt-6 flex justify-between items-center gap-3">
-              <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
-              <button type="submit" className="px-6 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.logReading}</button>
-          </div>
-        </form>
-      ) : (
-          <div className="text-center">
-              <p className="font-sans font-bold text-lg text-primary mb-2">{t.noActiveChallenge}</p>
-              <p className="text-sm font-sans text-gray-600 mb-4">{t.browseChallengesPrompt}</p>
-              <button 
-                  type="button"
-                  onClick={handleGoToChallenges}
-                  className="w-full px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark"
-              >
-                  {t.challenges}
-              </button>
-              <div className="mt-6 flex justify-start">
-                  <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
-              </div>
-          </div>
-      )}
+      <div className="mt-6 flex justify-between items-center gap-3">
+        <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
+        <button type="button" onClick={() => onStartReading(selectedChallengeId)} className="px-5 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.755 2.138a.75.75 0 00-1.51 0l-1.83 5.51a.75.75 0 00.697 1.002h3.786a.75.75 0 00.697-1.002l-1.83-5.51zM10 13a.75.75 0 00-.75.75v1.5a.75.75 0 001.5 0v-1.5A.75.75 0 0010 13zM3.804 5.343A.75.75 0 003 6.25v.004c0 .414.336.75.75.75h.004a.75.75 0 00.75-.75V6.25a.75.75 0 00-.699-.907zM16.196 5.343a.75.75 0 00-.804.907V6.25a.75.75 0 00.75.75h.004a.75.75 0 00.75-.75v-.004a.75.75 0 00-.699-.907z" /><path fillRule="evenodd" d="M5.5 10a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9zM2 10a.75.75 0 01.75-.75h1.25a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm15.25.75a.75.75 0 000-1.5h-1.25a.75.75 0 000 1.5h1.25z" clipRule="evenodd" /></svg>
+            {t.startReading}
+        </button>
+      </div>
     </div>
   );
 };
 
-const LogReadingFlow = () => {
-  const { isLoggingFlowActive, setIsLoggingFlowActive, t } = useAppContext();
-  const [step, setStep] = useState('details'); // 'details' or 'time'
+const StartReadingFlow = () => {
+  const { isStartReadingFlowActive, setIsStartReadingFlowActive, startReading, t } = useAppContext();
+  const [step, setStep] = useState('details'); // 'details' or 'challenge'
   const [bookDetails, setBookDetails] = useState({ title: '', author: '' });
 
   const handleNext = (details) => {
     setBookDetails(details);
-    setStep('time');
+    setStep('challenge');
   };
 
   const handleBack = () => {
     setStep('details');
   };
 
+  const handleStartReading = (challengeId) => {
+    startReading(bookDetails, challengeId);
+    handleClose();
+  };
+
   const handleClose = () => {
-    setIsLoggingFlowActive(false);
-    // Reset state after a short delay to allow for closing animation
+    setIsStartReadingFlowActive(false);
     setTimeout(() => {
       setStep('details');
       setBookDetails({ title: '', author: '' });
     }, 300);
   };
   
-  if (!isLoggingFlowActive) return null;
+  if (!isStartReadingFlowActive) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30" role="dialog" aria-modal="true" aria-labelledby="log-reading-title">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30" role="dialog" aria-modal="true" aria-labelledby="start-reading-title">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm m-4">
         {step === 'details' ? (
-          <ManualEntryForm onNext={handleNext} onCancel={handleClose} t={t} />
+          <ManualEntryFormNew onNext={handleNext} onCancel={handleClose} t={t} />
         ) : (
-          <LogTimeScreen bookDetails={bookDetails} onLog={handleClose} onBack={handleBack} t={t} />
+          <ChallengeSelector onStartReading={handleStartReading} onBack={handleBack} t={t} />
         )}
       </div>
     </div>
   );
 };
 
+
 const FloatingActionButton = () => {
-    const { setIsLoggingFlowActive } = useAppContext();
+    const { setIsStartReadingFlowActive, t } = useAppContext();
     return (
         <button
-            onClick={() => setIsLoggingFlowActive(true)}
+            onClick={() => setIsStartReadingFlowActive(true)}
             className="fixed bottom-24 sm:bottom-24 right-1/2 translate-x-1/2 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
-            aria-label="Log Reading"
+            aria-label={t.addANewBook}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -987,39 +1195,11 @@ const FloatingActionButton = () => {
 // --- PAGE COMPONENTS ---
 
 const HomePage = () => {
-  const { t, challenges, currentReader, setActivePage } = useAppContext();
-
-  const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
-
   return (
     <div className="space-y-6">
       <ReaderSelector />
-      <div>
-        <h2 className="font-display text-2xl text-secondary mt-6 mb-3 pb-2 border-b-2 border-lighter text-center">
-          {activeChallenges.length > 1 ? t.activeChallenges : t.activeChallenge}
-        </h2>
-        {activeChallenges.length > 0 ? (
-            <div className="space-y-4">
-              {activeChallenges.map(challenge => {
-                  const readerProgress = currentReader.progress?.[challenge.id] || 0;
-                  return (
-                    <ChallengeCard 
-                        key={challenge.id} 
-                        challenge={challenge} 
-                        progress={readerProgress} 
-                    />);
-              })}
-            </div>
-        ) : (
-            <div className="bg-white p-4 rounded-lg shadow-md text-center">
-                <h3 className="font-sans font-bold text-lg text-primary mb-2">{t.noActiveChallenge}</h3>
-                <p className="text-sm font-sans text-gray-600 mb-4">{t.browseChallengesPrompt}</p>
-                <button onClick={() => setActivePage('challenges')} className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">
-                    {t.challenges}
-                </button>
-            </div>
-        )}
-      </div>
+      <CurrentlyReadingShelf />
+      <CompletedBooksShelf />
     </div>
   );
 };
@@ -1380,7 +1560,7 @@ const App = () => {
       <AddReaderModal />
       <ExplorerScannerModal />
       <JoinChallengeModal />
-      <LogReadingFlow />
+      <StartReadingFlow />
     </div>
   );
 };
