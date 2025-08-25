@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, createContext, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -45,11 +44,6 @@ const translations = {
     addReader: "Add Reader",
     newReaderName: "New Reader's Name",
     chooseAvatar: "Choose an Avatar",
-    scanBookBarcode: "Scan Library Barcode",
-    startTimer: "Start Timer",
-    logManually: "Log Manually",
-    readingSession: "Reading Session",
-    stop: "Stop",
     explorer: "Explorer",
     explorerPassport: "Georges River Explorer Passport",
     scanNewCode: "Scan New QR Code",
@@ -85,6 +79,12 @@ const translations = {
     recommended: "Recommended",
     forKids: "For Kids",
     findAtLibrary: "Find at Library",
+    // New translations for logging flow
+    title: "Title",
+    authorOptional: "Author (optional)",
+    next: "Next",
+    back: "Back",
+    loggingFor: "Logging for:",
   },
   zh: {
     appTitle: "乔治河阅读",
@@ -111,11 +111,6 @@ const translations = {
     addReader: "添加读者",
     newReaderName: "新读者姓名",
     chooseAvatar: "选择头像",
-    scanBookBarcode: "扫描图书条码",
-    startTimer: "开始计时",
-    logManually: "手动记录",
-    readingSession: "阅读计时",
-    stop: "停止",
     explorer: "探索",
     explorerPassport: "乔治河探索者护照",
     scanNewCode: "扫描新二维码",
@@ -151,6 +146,12 @@ const translations = {
     recommended: "推荐",
     forKids: "儿童推荐",
     findAtLibrary: "在图书馆查找",
+     // New translations for logging flow
+    title: "书名",
+    authorOptional: "作者（选填）",
+    next: "下一步",
+    back: "返回",
+    loggingFor: "记录:",
   },
 };
 
@@ -261,19 +262,14 @@ const AppProvider = (props) => {
   const [currentReader, setCurrentReader] = useState<Reader>(initialReaders[0]);
   const [activePage, setActivePage] = useState('home');
   const [language, setLanguage] = useState('en');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLogChoiceModalOpen, setIsLogChoiceModalOpen] = useState(false);
-  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
-  const [scannedBook, setScannedBook] = useState(null);
   const [isAddReaderModalOpen, setIsAddReaderModalOpen] = useState(false);
   const [readers, setReaders] = useState<Reader[]>(initialReaders);
-  const [isTimerModalOpen, setIsTimerModalOpen] = useState(false);
-  const [timedMinutes, setTimedMinutes] = useState(0);
   const [challenges, setChallenges] = useState(initialChallenges);
   const [collectedStamps, setCollectedStamps] = useState([]);
   const [isExplorerScannerModalOpen, setIsExplorerScannerModalOpen] = useState(false);
   const [isJoinChallengeModalOpen, setIsJoinChallengeModalOpen] = useState(false);
   const [managingChallengeId, setManagingChallengeId] = useState(null);
+  const [isLoggingFlowActive, setIsLoggingFlowActive] = useState(false);
 
 
   const t = translations[language];
@@ -358,14 +354,8 @@ const AppProvider = (props) => {
     currentReader, setCurrentReader,
     activePage, setActivePage,
     language, setLanguage,
-    isModalOpen, setIsModalOpen,
-    isLogChoiceModalOpen, setIsLogChoiceModalOpen,
-    isScannerModalOpen, setIsScannerModalOpen,
-    scannedBook, setScannedBook,
     isAddReaderModalOpen, setIsAddReaderModalOpen,
     readers, addReader,
-    isTimerModalOpen, setIsTimerModalOpen,
-    timedMinutes, setTimedMinutes,
     challenges, events,
     libraries,
     collectedStamps, collectStamp,
@@ -374,6 +364,7 @@ const AppProvider = (props) => {
     managingChallengeId, setManagingChallengeId,
     updateChallengeParticipants,
     logReadingProgress,
+    isLoggingFlowActive, setIsLoggingFlowActive,
     t, // translations
   };
 
@@ -580,338 +571,6 @@ const EventCard = (props) => {
   );
 };
 
-const LogReadingChoiceModal = () => {
-    const { isLogChoiceModalOpen, setIsLogChoiceModalOpen, setIsScannerModalOpen, setIsTimerModalOpen, setIsModalOpen, t } = useAppContext();
-
-    if (!isLogChoiceModalOpen) return null;
-
-    const handleScan = () => {
-        setIsLogChoiceModalOpen(false);
-        setIsScannerModalOpen(true);
-    };
-
-    const handleStartTimer = () => {
-        setIsLogChoiceModalOpen(false);
-        setIsTimerModalOpen(true);
-    };
-
-    const handleManualLog = () => {
-        setIsLogChoiceModalOpen(false);
-        setIsModalOpen(true);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30" role="dialog" aria-modal="true" aria-labelledby="choice-modal-title">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4 text-center">
-                <h2 id="choice-modal-title" className="font-display text-2xl font-bold text-primary mb-6">{t.logYourReading}</h2>
-                <div className="space-y-4">
-                    <button onClick={handleScan} className="w-full bg-secondary text-white font-sans font-bold py-3 rounded-lg shadow-lg text-lg flex items-center justify-center gap-3 hover:bg-secondary-dark transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2m8-16h2a2 2 0 012 2v2m-4 12h2a2 2 0 002-2v-2" />
-                        </svg>
-                        <span>{t.scanBookBarcode}</span>
-                    </button>
-                    <button onClick={handleStartTimer} className="w-full bg-lighter text-primary font-sans font-bold py-3 rounded-lg text-lg flex items-center justify-center gap-3 hover:bg-light transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>{t.startTimer}</span>
-                    </button>
-                    <button onClick={handleManualLog} className="w-full bg-lighter text-primary font-sans font-bold py-3 rounded-lg text-lg flex items-center justify-center gap-3 hover:bg-light transition-colors">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
-                        </svg>
-                        <span>{t.logManually}</span>
-                    </button>
-                </div>
-                <button onClick={() => setIsLogChoiceModalOpen(false)} className="mt-6 text-sm text-gray-600 hover:underline">
-                    {t.cancel}
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const BarcodeScannerModal = () => {
-    const { isScannerModalOpen, setIsScannerModalOpen, setIsModalOpen, setScannedBook, t } = useAppContext();
-    const videoRef = useRef(null);
-    const streamRef = useRef(null);
-
-    useEffect(() => {
-        if (!isScannerModalOpen) {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-            return;
-        }
-
-        const handleScanSuccess = () => {
-            setScannedBook({ title: 'The Very Hungry Caterpillar' }); // Mock book data
-            setIsScannerModalOpen(false);
-            setIsModalOpen(true);
-        };
-
-        let scanTimer;
-
-        const startCamera = async () => {
-            const startStream = (stream) => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-                streamRef.current = stream; // Store stream for cleanup
-                scanTimer = setTimeout(handleScanSuccess, 3000); // Simulate scan
-            };
-
-            // Try for rear camera first
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                startStream(stream);
-            } catch (err) {
-                console.warn("Could not get environment camera, trying default camera.", err);
-                // If that fails, try for any camera
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    startStream(stream);
-                } catch (fallbackErr) {
-                    console.error("Error accessing camera:", fallbackErr);
-                    alert("Could not access camera. Please check permissions and try again.");
-                    setIsScannerModalOpen(false);
-                }
-            }
-        };
-
-        startCamera();
-
-        return () => { // Cleanup function
-            clearTimeout(scanTimer);
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-        };
-    }, [isScannerModalOpen, setScannedBook, setIsModalOpen, setIsScannerModalOpen]);
-    
-    const handleCancel = () => {
-        setIsScannerModalOpen(false);
-    };
-
-    if (!isScannerModalOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-40" role="dialog" aria-modal="true">
-            <video ref={videoRef} autoPlay playsInline className="absolute top-0 left-0 w-full h-full object-cover"></video>
-            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-            <div className="relative z-10 flex flex-col items-center justify-center text-white w-full h-full p-4">
-                <p className="text-lg font-sans mb-4">Position barcode inside the frame</p>
-                <div className="w-full max-w-xs h-32 border-4 border-white rounded-lg relative overflow-hidden">
-                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-500 animate-scan"></div>
-                </div>
-                <p className="mt-4 text-sm opacity-80">Scanning...</p>
-                <button onClick={handleCancel} className="absolute bottom-10 px-6 py-3 bg-white bg-opacity-20 rounded-full font-sans font-bold text-white backdrop-blur-sm">
-                    {t.cancel}
-                </button>
-            </div>
-            <style>{`
-                @keyframes scan {
-                    0% { transform: translateY(-10px); }
-                    100% { transform: translateY(128px); }
-                }
-                .animate-scan {
-                    animation: scan 2s linear infinite;
-                }
-            `}</style>
-        </div>
-    );
-};
-
-const TimerModal = () => {
-    const { isTimerModalOpen, setIsTimerModalOpen, setIsModalOpen, setTimedMinutes, t } = useAppContext();
-    const [seconds, setSeconds] = useState(0);
-
-    useEffect(() => {
-        let interval = null;
-        if (isTimerModalOpen) {
-            interval = setInterval(() => {
-                setSeconds(sec => sec + 1);
-            }, 1000);
-        } else {
-            setSeconds(0);
-        }
-        return () => clearInterval(interval);
-    }, [isTimerModalOpen]);
-
-    const handleStop = () => {
-        const minutes = Math.floor(seconds / 60);
-        setTimedMinutes(minutes > 0 ? minutes : 1); // Log at least 1 minute.
-        setIsTimerModalOpen(false);
-        setIsModalOpen(true);
-    };
-
-    const handleCancel = () => {
-        setIsTimerModalOpen(false);
-    };
-
-    const formatTime = () => {
-        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const secs = (seconds % 60).toString().padStart(2, '0');
-        return `${mins}:${secs}`;
-    };
-
-    if (!isTimerModalOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-primary-dark bg-opacity-90 flex flex-col items-center justify-center z-40 text-white" role="dialog" aria-modal="true">
-            <h2 className="font-display text-3xl font-bold mb-4">{t.readingSession}</h2>
-            <div className="font-mono text-8xl my-8 p-4 rounded-lg bg-black bg-opacity-20">
-                {formatTime()}
-            </div>
-            <div className="flex gap-4">
-                <button onClick={handleCancel} className="px-8 py-3 bg-white bg-opacity-20 rounded-full font-sans font-bold text-white backdrop-blur-sm hover:bg-opacity-30">
-                    {t.cancel}
-                </button>
-                <button onClick={handleStop} className="px-8 py-3 bg-secondary rounded-full font-sans font-bold text-white shadow-lg hover:bg-secondary-dark">
-                    {t.stop}
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const LogReadingModal = () => {
-    const { isModalOpen, setIsModalOpen, t, scannedBook, setScannedBook, timedMinutes, setTimedMinutes, currentReader, challenges, logReadingProgress, setActivePage } = useAppContext();
-    const minutesInputRef = useRef(null);
-    const [selectedChallengeIds, setSelectedChallengeIds] = useState([]);
-    
-    const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
-
-    useEffect(() => {
-        if (isModalOpen) {
-            if (activeChallenges.length === 1) {
-                setSelectedChallengeIds([activeChallenges[0].id]);
-            }
-            
-            if (timedMinutes > 0 && minutesInputRef.current) {
-                minutesInputRef.current.value = String(timedMinutes);
-            } else if (minutesInputRef.current) {
-                minutesInputRef.current.value = '';
-            }
-        }
-    }, [isModalOpen, currentReader, challenges, timedMinutes, activeChallenges]);
-    
-    const handleClose = () => {
-        setIsModalOpen(false);
-        setScannedBook(null);
-        setTimedMinutes(0);
-        setSelectedChallengeIds([]);
-        if (minutesInputRef.current) minutesInputRef.current.value = '';
-    };
-    
-    const handleChallengeSelection = (toggledId) => {
-        setSelectedChallengeIds(prevIds => 
-            prevIds.includes(toggledId)
-                ? prevIds.filter(id => id !== toggledId)
-                : [...prevIds, toggledId]
-        );
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const minutes = parseInt(minutesInputRef.current.value, 10);
-        if (isNaN(minutes) || minutes <= 0) return;
-
-        if (activeChallenges.length > 0 && selectedChallengeIds.length === 0) {
-            alert(t.pleaseSelectOneChallenge);
-            return;
-        }
-
-        selectedChallengeIds.forEach(challengeId => {
-            logReadingProgress(challengeId, minutes);
-        });
-        
-        handleClose();
-    };
-    
-    const handleGoToChallenges = () => {
-        handleClose();
-        setActivePage('challenges');
-    };
-
-    if (!isModalOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
-                {activeChallenges.length > 0 ? (
-                    <form onSubmit={handleSubmit}>
-                        <h2 id="modal-title" className="font-display text-2xl font-bold text-primary mb-4">{t.logYourReading}</h2>
-                        {scannedBook && (
-                            <div className="mb-4 p-3 bg-lightest rounded-md border border-lighter">
-                                <p className="text-sm font-sans text-gray-600">Book:</p>
-                                <p className="font-sans font-semibold text-primary">{scannedBook.title}</p>
-                            </div>
-                        )}
-                        <div className="mb-4">
-                            <label className="block text-sm font-sans font-medium text-gray-700 mb-2">{t.applyToChallenge}</label>
-                            <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                                {activeChallenges.map(challenge => (
-                                    <div key={challenge.id} className="flex items-center">
-                                        <input 
-                                            type="checkbox" 
-                                            id={`challenge-${challenge.id}`} 
-                                            value={challenge.id}
-                                            checked={selectedChallengeIds.includes(challenge.id)}
-                                            onChange={() => handleChallengeSelection(challenge.id)}
-                                            className="h-4 w-4 text-primary focus:ring-accent border-gray-300 rounded"
-                                        />
-                                        <label htmlFor={`challenge-${challenge.id}`} className="ml-3 flex items-center text-sm font-sans text-gray-800 cursor-pointer">
-                                            <span className="mr-2">{challenge.badge}</span>
-                                            <span>{challenge.title}</span>
-                                        </label>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <label htmlFor="minutes" className="block text-sm font-sans font-medium text-gray-700">{t.minutesRead}</label>
-                        <input
-                            ref={minutesInputRef}
-                            type="number"
-                            id="minutes"
-                            name="minutes"
-                            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                            placeholder="e.g., 30"
-                            required
-                            min={1}
-                        />
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button type="button" onClick={handleClose} className="px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.cancel}</button>
-                            <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.save}</button>
-                        </div>
-                    </form>
-                ) : (
-                    <div>
-                        <h2 id="modal-title" className="font-display text-2xl font-bold text-primary mb-4">{t.logYourReading}</h2>
-                        <div className="text-center">
-                            <p className="font-sans font-bold text-lg text-primary mb-2">{t.noActiveChallenge}</p>
-                            <p className="text-sm font-sans text-gray-600 mb-4">{t.browseChallengesPrompt}</p>
-                            <button 
-                                type="button"
-                                onClick={handleGoToChallenges}
-                                className="w-full px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark"
-                            >
-                                {t.challenges}
-                            </button>
-                        </div>
-                         <div className="mt-6 flex justify-end">
-                            <button type="button" onClick={handleClose} className="px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.cancel}</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
 const AddReaderModal = () => {
     const { isAddReaderModalOpen, setIsAddReaderModalOpen, addReader, t } = useAppContext();
     const [name, setName] = useState('');
@@ -1113,22 +772,230 @@ const JoinChallengeModal = () => {
     );
 };
 
+// --- NEW LOGGING FLOW COMPONENTS ---
+
+const ManualEntryForm = ({ onNext, onCancel, t }) => {
+  const [title, setTitle] = useState('');
+  const [author, setAuthor] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onNext({ title: title.trim(), author: author.trim() });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-6">
+      <h2 id="log-reading-title" className="font-display text-2xl font-bold text-primary mb-6 text-center">{t.logYourReading}</h2>
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="bookTitle" className="block text-sm font-sans font-medium text-gray-700 mb-1">{t.title}</label>
+          <input
+            type="text"
+            id="bookTitle"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+            placeholder="e.g., The Very Hungry Caterpillar"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="bookAuthor" className="block text-sm font-sans font-medium text-gray-700 mb-1">{t.authorOptional}</label>
+          <input
+            type="text"
+            id="bookAuthor"
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+            placeholder="e.g., Eric Carle"
+          />
+        </div>
+      </div>
+      <div className="mt-8 flex justify-end gap-3">
+        <button type="button" onClick={onCancel} className="px-4 py-2 bg-lighter text-primary rounded-md font-sans font-semibold hover:bg-light">{t.cancel}</button>
+        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.next}</button>
+      </div>
+    </form>
+  );
+};
+
+const LogTimeScreen = ({ bookDetails, onLog, onBack, t }) => {
+  const { currentReader, challenges, logReadingProgress, setActivePage } = useAppContext();
+  const minutesInputRef = useRef(null);
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState([]);
+  
+  const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
+
+  useEffect(() => {
+    if (activeChallenges.length === 1) {
+      setSelectedChallengeIds([activeChallenges[0].id]);
+    }
+  }, [activeChallenges]);
+  
+  const handleChallengeSelection = (toggledId) => {
+    setSelectedChallengeIds(prevIds => 
+        prevIds.includes(toggledId)
+            ? prevIds.filter(id => id !== toggledId)
+            : [...prevIds, toggledId]
+    );
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const minutes = parseInt(minutesInputRef.current.value, 10);
+    if (isNaN(minutes) || minutes <= 0) return;
+
+    if (activeChallenges.length > 0 && selectedChallengeIds.length === 0) {
+        alert(t.pleaseSelectOneChallenge);
+        return;
+    }
+
+    selectedChallengeIds.forEach(challengeId => {
+        logReadingProgress(challengeId, minutes);
+    });
+    
+    onLog();
+  };
+
+  const handleGoToChallenges = () => {
+    onLog(); // Close the modal first
+    setActivePage('challenges');
+  };
+
+  return (
+    <div className="p-6">
+      <div className="mb-4 p-3 bg-lightest rounded-md border border-lighter">
+        <p className="text-sm font-sans text-gray-600">{t.loggingFor}</p>
+        <p className="font-sans font-semibold text-primary truncate">{bookDetails.title}</p>
+        {bookDetails.author && <p className="text-sm font-sans text-gray-500">by {bookDetails.author}</p>}
+      </div>
+      {activeChallenges.length > 0 ? (
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+              <label className="block text-sm font-sans font-medium text-gray-700 mb-2">{t.applyToChallenge}</label>
+              <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                  {activeChallenges.map(challenge => (
+                      <div key={challenge.id} className="flex items-center">
+                          <input 
+                              type="checkbox" 
+                              id={`log-challenge-${challenge.id}`} 
+                              value={challenge.id}
+                              checked={selectedChallengeIds.includes(challenge.id)}
+                              onChange={() => handleChallengeSelection(challenge.id)}
+                              className="h-4 w-4 text-primary focus:ring-accent border-gray-300 rounded"
+                          />
+                          <label htmlFor={`log-challenge-${challenge.id}`} className="ml-3 flex items-center text-sm font-sans text-gray-800 cursor-pointer">
+                              <span className="mr-2">{challenge.badge}</span>
+                              <span className="truncate">{challenge.title}</span>
+                          </label>
+                      </div>
+                  ))}
+              </div>
+          </div>
+          <label htmlFor="minutes" className="block text-sm font-sans font-medium text-gray-700">{t.minutesRead}</label>
+          <input
+              ref={minutesInputRef}
+              type="number"
+              id="minutes"
+              name="minutes"
+              className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+              placeholder="e.g., 30"
+              required
+              min={1}
+          />
+          <div className="mt-6 flex justify-between items-center gap-3">
+              <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
+              <button type="submit" className="px-6 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark">{t.logReading}</button>
+          </div>
+        </form>
+      ) : (
+          <div className="text-center">
+              <p className="font-sans font-bold text-lg text-primary mb-2">{t.noActiveChallenge}</p>
+              <p className="text-sm font-sans text-gray-600 mb-4">{t.browseChallengesPrompt}</p>
+              <button 
+                  type="button"
+                  onClick={handleGoToChallenges}
+                  className="w-full px-4 py-2 bg-primary text-white rounded-md font-sans font-semibold hover:bg-primary-dark"
+              >
+                  {t.challenges}
+              </button>
+              <div className="mt-6 flex justify-start">
+                  <button type="button" onClick={onBack} className="text-sm font-sans font-semibold text-gray-600 hover:text-primary">← {t.back}</button>
+              </div>
+          </div>
+      )}
+    </div>
+  );
+};
+
+const LogReadingFlow = () => {
+  const { isLoggingFlowActive, setIsLoggingFlowActive, t } = useAppContext();
+  const [step, setStep] = useState('details'); // 'details' or 'time'
+  const [bookDetails, setBookDetails] = useState({ title: '', author: '' });
+
+  const handleNext = (details) => {
+    setBookDetails(details);
+    setStep('time');
+  };
+
+  const handleBack = () => {
+    setStep('details');
+  };
+
+  const handleClose = () => {
+    setIsLoggingFlowActive(false);
+    // Reset state after a short delay to allow for closing animation
+    setTimeout(() => {
+      setStep('details');
+      setBookDetails({ title: '', author: '' });
+    }, 300);
+  };
+  
+  if (!isLoggingFlowActive) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30" role="dialog" aria-modal="true" aria-labelledby="log-reading-title">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-sm m-4">
+        {step === 'details' ? (
+          <ManualEntryForm onNext={handleNext} onCancel={handleClose} t={t} />
+        ) : (
+          <LogTimeScreen bookDetails={bookDetails} onLog={handleClose} onBack={handleBack} t={t} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const FloatingActionButton = () => {
+    const { setIsLoggingFlowActive } = useAppContext();
+    return (
+        <button
+            onClick={() => setIsLoggingFlowActive(true)}
+            className="fixed bottom-24 sm:bottom-24 right-1/2 translate-x-1/2 z-20 w-16 h-16 bg-primary rounded-full text-white shadow-lg flex items-center justify-center hover:bg-primary-dark active:scale-95 transition-all"
+            aria-label="Log Reading"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+        </button>
+    );
+};
+
 
 // --- PAGE COMPONENTS ---
 
 const HomePage = () => {
-  const { setIsLogChoiceModalOpen, t, challenges, currentReader, setActivePage } = useAppContext();
+  const { t, challenges, currentReader, setActivePage } = useAppContext();
 
   const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
 
   return (
     <div className="space-y-6">
       <ReaderSelector />
-      <button onClick={() => setIsLogChoiceModalOpen(true)} className="w-full max-w-md mx-auto block bg-secondary text-white font-sans font-bold py-4 rounded-lg shadow-lg text-xl hover:bg-secondary-dark transition-transform transform hover:scale-105">
-        {t.logReading}
-      </button>
       <div>
-        <h2 className="font-display text-2xl text-secondary mb-3 pb-2 border-b-2 border-lighter text-center">
+        <h2 className="font-display text-2xl text-secondary mt-6 mb-3 pb-2 border-b-2 border-lighter text-center">
           {activeChallenges.length > 1 ? t.activeChallenges : t.activeChallenge}
         </h2>
         {activeChallenges.length > 0 ? (
@@ -1230,25 +1097,71 @@ const CompletedChallengeBadge = ({ challenge, earners }) => {
 };
 
 const Stamp = ({ library, isCollected }) => {
-    const containerClasses = `bg-white p-4 rounded-lg shadow-md flex flex-col items-center text-center gap-2 transform hover:scale-105 transition-all duration-300 h-full ${!isCollected ? 'grayscale opacity-80' : ''}`;
+    const containerClasses = `bg-white p-4 rounded-lg shadow-md flex flex-col items-center text-center gap-2 transform hover:scale-105 transition-all duration-300 h-full`;
+
+    // Define color palettes based on the theme to make each uncollected stamp unique
+    const palettes = [
+        { // Palette 1 (Original Teal)
+            building: '#E2F2F2', // lightest
+            roof: '#5DBFC0',     // accent
+            base: '#007582',     // primary
+            windows: '#9AD3D4',  // light
+            door: '#005C68',     // primary-dark
+            doorHandle: '#C8E6E6', // lighter
+        },
+        { // Palette 2 (Secondary Green focus)
+            building: '#E2F2F2', // lightest
+            roof: '#00A5A5',     // secondary
+            base: '#005C68',     // primary-dark
+            windows: '#C8E6E6',  // lighter
+            door: '#007582',     // primary
+            doorHandle: '#9AD3D4', // light
+        },
+        { // Palette 3 (Light Blue/Green)
+            building: '#C8E6E6', // lighter
+            roof: '#9AD3D4',     // light
+            base: '#007582',     // primary
+            windows: '#E2F2F2',  // lightest
+            door: '#00A5A5',     // secondary
+            doorHandle: '#FFFFFF',
+        },
+        { // Palette 4 (Darker base, Accent roof)
+            building: '#C8E6E6', // lighter
+            roof: '#5DBFC0',     // accent
+            base: '#005C68',     // primary-dark
+            windows: '#E2F2F2',  // lightest
+            door: '#007582',     // primary
+            doorHandle: '#9AD3D4', // light
+        }
+    ];
+
+    // Select a palette based on the library ID to make them slightly different
+    const colors = palettes[library.id % palettes.length];
 
     return (
         <div className={containerClasses}>
-            <div className={`flex-shrink-0 w-16 h-16 flex items-center justify-center ${!isCollected ? 'text-gray-500' : ''}`}>
+            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center">
                 {isCollected ? (
-                     <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" viewBox="0 0 24 24">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" viewBox="0 0 24 24" aria-label="Collected Stamp">
                         <path fill="#007582" d="M12,1.5l3.09,6.26l6.91,1.01l-5,4.87l1.18,6.88L12,17.25l-6.18,3.25l1.18-6.88l-5-4.87l6.91-1.01L12,1.5z"/>
                         <path fill="#5DBFC0" d="M12 4.5l2.2 4.46 4.92.72-3.56 3.46.84 4.9L12 15.75l-4.4 2.31.84-4.9-3.56-3.46 4.92.72L12 4.5z"/>
                         <path d="M8 12.3l2.7 2.7 5.3-6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                     </svg>
                 ) : (
-                     <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" viewBox="0 0 64 64" aria-hidden="true">
+                        <g>
+                            <path fill={colors.building} d="M10 58h44V22L32 8 10 22v36z"/>
+                            <path fill={colors.roof} d="M54 22L32 8 10 22l22 8 22-8z"/>
+                            <path fill={colors.base} d="M8 58h48v4H8z"/>
+                            <path fill={colors.windows} d="M16 52V34h8v18H16zm14 0V34h8v18H30zm14 0V34h8v18H44z"/>
+                            <path fill={colors.door} d="M28 52h8v-9h-8v9z"/>
+                            <circle cx="34" cy="47.5" r="1" fill={colors.doorHandle}/>
+                        </g>
                     </svg>
                 )}
             </div>
             <div className="flex-1 w-full flex flex-col justify-center">
-                <h3 className={`font-sans font-bold text-lg ${isCollected ? 'text-primary' : 'text-gray-700'}`}>{library.name}</h3>
+                <h3 className="font-sans font-bold text-lg text-primary">{library.name}</h3>
             </div>
         </div>
     );
@@ -1463,13 +1376,11 @@ const App = () => {
         {renderPage()}
       </main>
       <BottomNav />
-      <LogReadingChoiceModal />
-      <BarcodeScannerModal />
-      <TimerModal />
-      <LogReadingModal />
+      <FloatingActionButton />
       <AddReaderModal />
       <ExplorerScannerModal />
       <JoinChallengeModal />
+      <LogReadingFlow />
     </div>
   );
 };
