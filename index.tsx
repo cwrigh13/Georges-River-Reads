@@ -1124,7 +1124,7 @@ const HomePage = () => {
   return (
     <div className="space-y-6">
       <ReaderSelector />
-      <button onClick={() => setIsLogChoiceModalOpen(true)} className="w-full bg-secondary text-white font-sans font-bold py-4 rounded-lg shadow-lg text-xl hover:bg-secondary-dark transition-transform transform hover:scale-105">
+      <button onClick={() => setIsLogChoiceModalOpen(true)} className="w-full max-w-md mx-auto block bg-secondary text-white font-sans font-bold py-4 rounded-lg shadow-lg text-xl hover:bg-secondary-dark transition-transform transform hover:scale-105">
         {t.logReading}
       </button>
       <div>
