@@ -580,6 +580,19 @@ const ProfileIcon = ({ className }) => (
   </svg>
 );
 
+const ClockIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
+const OpenBookIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+);
+
+
 const BottomNav = () => {
   const { activePage, setActivePage, t } = useAppContext();
   
@@ -648,7 +661,7 @@ const ReaderSelector = () => {
   );
 };
 
-const ChallengeCard = ({ challenge, isJoined = false, onManage = () => {}, showJoinButton = false, progress = 0, isBookOfTheMonth = false }) => {
+const ChallengeCard = ({ challenge, isJoined = false, onManage = () => {}, showJoinButton = false, progress = 0, isBookOfTheMonth = false, totalMinutes, totalBooks }) => {
   const { t } = useAppContext();
   const percentage = challenge.goal > 0 ? Math.min(100, Math.round((progress / challenge.goal) * 100)) : 0;
   const unitLabel = challenge.unit === 'books' ? t.books : t.mins;
@@ -663,12 +676,25 @@ const ChallengeCard = ({ challenge, isJoined = false, onManage = () => {}, showJ
         <div className="text-4xl">{challenge.badge}</div>
         <div className="flex-1">
           <h3 className="font-sans font-bold text-lg text-primary">{challenge.title}</h3>
-          <p className="text-sm font-sans text-gray-600 mb-2">{challenge.description}</p>
+          <p className="text-sm font-sans text-gray-600 mb-3">{challenge.description}</p>
+          
+          <div className="flex items-center gap-4 text-sm text-gray-700 mb-3">
+            <div className="flex items-center gap-1.5 bg-lightest px-2 py-1 rounded-md" title={`${totalMinutes} ${t.mins} read in this challenge`}>
+              <ClockIcon className="w-4 h-4 text-secondary" />
+              <span className="font-semibold">{totalMinutes}</span>
+              <span className="text-xs text-gray-600">{t.mins}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-lightest px-2 py-1 rounded-md" title={`${totalBooks} ${t.books} finished in this challenge`}>
+              <OpenBookIcon className="w-4 h-4 text-secondary" />
+              <span className="font-semibold">{totalBooks}</span>
+              <span className="text-xs text-gray-600">{t.books}</span>
+            </div>
+          </div>
+          
           <div className="w-full bg-lighter rounded-full h-2.5">
             <div className="bg-accent h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
           </div>
-          <div className="text-xs font-sans text-gray-500 mt-1 flex justify-between">
-              <span>{t.progress}: {progress} {unitLabel}</span>
+          <div className="text-xs font-sans text-gray-500 mt-1 flex justify-end">
               <span>{t.goal}: {challenge.goal} {unitLabel}</span>
           </div>
         </div>
@@ -1251,24 +1277,39 @@ const HomePage = () => {
 };
 
 const ChallengesPage = () => {
-  const { challenges, t, readers, setIsJoinChallengeModalOpen, setManagingChallengeId } = useAppContext();
+  const { challenges, t, readers, books, setIsJoinChallengeModalOpen, setManagingChallengeId } = useAppContext();
   
   const handleManageChallenge = (challengeId) => {
     setManagingChallengeId(challengeId);
     setIsJoinChallengeModalOpen(true);
   };
 
-  const renderChallengeSection = (title, challenges) => {
-    if (challenges.length === 0) return null;
+  const renderChallengeSection = (title, challengesToRender) => {
+    if (challengesToRender.length === 0) return null;
     return (
       <div className="mb-8">
         <h3 className="font-display text-2xl text-secondary mb-3 pb-2 border-b-2 border-lighter text-center">{title}</h3>
         <div className="space-y-4">
-          {challenges.map(challenge => {
-            const isFamilyJoined = readers.some(r => r.joinedChallengeIds.includes(challenge.id));
-            const totalProgress = readers
+          {challengesToRender.map(challenge => {
+            const participatingReaderIds = readers
                 .filter(r => r.joinedChallengeIds.includes(challenge.id))
+                .map(r => r.id);
+
+            const isFamilyJoined = participatingReaderIds.length > 0;
+            
+            const totalProgress = readers
+                .filter(r => participatingReaderIds.includes(r.id))
                 .reduce((sum, reader) => sum + (reader.progress?.[challenge.id] || 0), 0);
+
+            // Calculate total minutes and books for this challenge across all participating family members
+            const challengeBooks = books.filter(b => 
+                b.challengeId === challenge.id && 
+                participatingReaderIds.includes(b.readerId)
+            );
+
+            const totalMinutesRead = challengeBooks.reduce((sum, book) => sum + book.progressMinutes, 0);
+            const totalBooksRead = challengeBooks.filter(b => b.status === 'finished').length;
+            
             return (
                 <ChallengeCard 
                     key={challenge.id} 
@@ -1277,6 +1318,8 @@ const ChallengesPage = () => {
                     onManage={() => handleManageChallenge(challenge.id)}
                     showJoinButton={true}
                     progress={totalProgress}
+                    totalMinutes={totalMinutesRead}
+                    totalBooks={totalBooksRead}
                 />
             );
           })}
@@ -1364,6 +1407,68 @@ const Stamp = ({ library, isCollected }) => {
     // Select a palette based on the library ID to make them slightly different
     const colors = palettes[library.id % palettes.length];
 
+    // Define different building shapes
+    const buildingSvgs = [
+        // Building 1 (Original A-Frame)
+        ({ colors }) => (
+            <g>
+                <path fill={colors.building} d="M10 58h44V22L32 8 10 22v36z"/>
+                <path fill={colors.roof} d="M54 22L32 8 10 22l22 8 22-8z"/>
+                <path fill={colors.base} d="M8 58h48v4H8z"/>
+                <path fill={colors.windows} d="M16 52V34h8v18H16zm14 0V34h8v18H30zm14 0V34h8v18H44z"/>
+                <path fill={colors.door} d="M28 52h8v-9h-8v9z"/>
+                <circle cx="34" cy="47.5" r="1" fill={colors.doorHandle}/>
+            </g>
+        ),
+        // Building 2 (Flat Roof)
+        ({ colors }) => (
+            <g>
+                <path fill={colors.building} d="M12 58V24h40v34z" />
+                <path fill={colors.base} d="M10 58h44v4H10z" />
+                <path fill={colors.roof} d="M12 20h40v4H12z" />
+                <path fill={colors.windows} d="M18 50V40h8v10h-8zm16 0V40h8v10h-8zm-16-14V26h8v10h-8zm16 0V26h8v10h-8z" />
+                <path fill={colors.door} d="M28 58v-12h8v12z" />
+                <circle cx="30" cy="52" r="1" fill={colors.doorHandle} />
+            </g>
+        ),
+        // Building 3 (Curved Roof)
+        ({ colors }) => (
+            <g>
+                <path fill={colors.building} d="M10 58h44V28H10z"/>
+                <path fill={colors.roof} d="M10,28 C10,18 54,18 54,28 Z" />
+                <path fill={colors.base} d="M8 58h48v4H8z"/>
+                <path fill={colors.windows} d="M16 50h32v-6H16zm0-10h32v-6H16z" />
+                <path fill={colors.door} d="M28 58v-14h8v14z"/>
+                <circle cx="30" cy="51" r="1" fill={colors.doorHandle} />
+            </g>
+        ),
+        // Building 4 (Classical with Columns)
+        ({ colors }) => (
+             <g>
+                <path fill={colors.roof} d="M32 8L8 24h48L32 8z" />
+                <path fill={colors.roof} d="M10 28h44v-4H10z" />
+                <path fill={colors.building} d="M14 58V32h36v26z"/>
+                <path fill={colors.doorHandle} d="M16 54V34h4v20h-4zm8 0V34h4v20h-4zm8 0V34h4v20h-4zm8 0V34h4v20h-4z"/>
+                <path fill={colors.base} d="M12 58h40v4H12z"/>
+            </g>
+        ),
+        // Building 5 (Two-Story)
+        ({ colors }) => (
+            <g>
+                <path fill={colors.building} d="M12 58V20h40v38z" />
+                <path fill={colors.roof} d="M10 20h44v4H10z" />
+                <path fill={colors.base} d="M10 58h44v4H10z" />
+                <path fill={colors.windows} d="M18 34h8v-8h-8v8zm16 0h8v-8h-8v8z" />
+                <path fill={colors.windows} d="M18 48h8v-8h-8v8z" />
+                <path fill={colors.door} d="M38 58v-12h8v12z" />
+                <circle cx="40" cy="52" r="1" fill={colors.doorHandle} />
+            </g>
+        ),
+    ];
+    
+    // Select a building shape based on library ID
+    const BuildingIcon = buildingSvgs[library.id % buildingSvgs.length];
+
     return (
         <div className={containerClasses}>
             <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center">
@@ -1375,14 +1480,7 @@ const Stamp = ({ library, isCollected }) => {
                     </svg>
                 ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" viewBox="0 0 64 64" aria-hidden="true">
-                        <g>
-                            <path fill={colors.building} d="M10 58h44V22L32 8 10 22v36z"/>
-                            <path fill={colors.roof} d="M54 22L32 8 10 22l22 8 22-8z"/>
-                            <path fill={colors.base} d="M8 58h48v4H8z"/>
-                            <path fill={colors.windows} d="M16 52V34h8v18H16zm14 0V34h8v18H30zm14 0V34h8v18H44z"/>
-                            <path fill={colors.door} d="M28 52h8v-9h-8v9z"/>
-                            <circle cx="34" cy="47.5" r="1" fill={colors.doorHandle}/>
-                        </g>
+                       <BuildingIcon colors={colors} />
                     </svg>
                 )}
             </div>
@@ -1568,7 +1666,6 @@ const RecommendedPage = () => {
 
     return (
         <div>
-            <h2 className="font-display text-3xl text-secondary mb-4 pb-2 border-b-2 border-lighter text-center">{t.recommended}</h2>
             {renderBookSection(t.forKids, recommendations.kids)}
             {renderBookSection(t.forTeens, recommendations.teens)}
             {renderBookSection(t.forAdults, recommendations.adults)}
