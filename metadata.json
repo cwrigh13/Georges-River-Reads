@@ -1,0 +1,7 @@
+{
+  "name": "Georges River Reads NEW NEW NEW",
+  "description": "Georges River Reads is a comprehensive reading engagement platform designed for the unique multicultural fabric of our community. While inspired by best-in-class apps like Beanstack, our platform is purpose-built to break down language barriers, celebrate diversity, and strengthen the bond between residents and Georges River Libraries. It will be a fun, gamified experience for individuals and families, and a powerful analytics and outreach tool for library staff.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
