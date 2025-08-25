@@ -1103,7 +1103,24 @@ const ChallengeSelector = ({ onStartReading, onBack, t }) => {
   const { currentReader, challenges } = useAppContext();
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
 
-  const activeChallenges = challenges.filter(c => currentReader.joinedChallengeIds.includes(c.id));
+  const readerCategoryMap = {
+    kids: 'children',
+    teens: 'teens',
+    adults: 'adults',
+  };
+  const readerAgeCategory = readerCategoryMap[currentReader.ageRange];
+
+  const activeChallenges = challenges.filter(challenge => {
+    const isJoined = currentReader.joinedChallengeIds.includes(challenge.id);
+    if (!isJoined) {
+      return false;
+    }
+    
+    // A challenge is valid if it's 'general' or matches the reader's age category
+    const isAgeAppropriate = challenge.category === 'general' || !challenge.category || challenge.category === readerAgeCategory;
+    
+    return isAgeAppropriate;
+  });
 
   return (
     <div className="p-6">
