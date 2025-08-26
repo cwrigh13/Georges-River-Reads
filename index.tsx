@@ -116,6 +116,14 @@ const translations = {
     noCompletedBooksPrompt: "Finish a book to add it to your collection.",
     noJoinedChallenges: "No Joined Challenges Yet!",
     noJoinedChallengesPrompt: "You can start a book without a challenge, or go to the Challenges page to join one.",
+    // Login page translations
+    welcome: "Welcome Back!",
+    loginPrompt: "Please sign in to continue.",
+    email: "Email Address",
+    password: "Password",
+    login: "Login",
+    logout: "Logout",
+    invalidCredentials: "Invalid email or password. Please try again.",
   },
   zh: {
     appTitle: "乔治河阅读",
@@ -203,6 +211,14 @@ const translations = {
     noCompletedBooksPrompt: "完成一本书，将其添加到您的收藏中。",
     noJoinedChallenges: "尚未加入任何挑战！",
     noJoinedChallengesPrompt: "您可以直接开始阅读，或前往“挑战”页面加入一个新挑战。",
+    // Login page translations
+    welcome: "欢迎回来！",
+    loginPrompt: "请登录以继续。",
+    email: "电子邮件地址",
+    password: "密码",
+    login: "登录",
+    logout: "登出",
+    invalidCredentials: "电子邮件或密码无效。请再试一次。",
   },
 };
 
@@ -317,6 +333,7 @@ const bookClubs = [
 const AppContext = createContext(null);
 
 const AppProvider = (props) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentReader, setCurrentReader] = useState<Reader>(initialReaders[0]);
   const [activePage, setActivePage] = useState('home');
   const [language, setLanguage] = useState('en');
@@ -330,8 +347,23 @@ const AppProvider = (props) => {
   const [books, setBooks] = useState<Book[]>(initialBooks);
   const [isStartReadingFlowActive, setIsStartReadingFlowActive] = useState(false);
 
-
   const t = translations[language];
+  
+  const login = (email, password) => {
+    // This is a mock login. In a real app, you'd make an API call.
+    if (email.toLowerCase() === 'family@georgesriver.nsw.gov.au' && password === 'password123') {
+        setIsAuthenticated(true);
+        return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    // Optionally reset state to initial values if needed
+    setCurrentReader(initialReaders[0]);
+    setActivePage('home');
+  };
 
   const addReader = (name: string, avatar: string, ageRange: 'kids' | 'teens' | 'adults') => {
     const newReader: Reader = {
@@ -481,6 +513,7 @@ const AppProvider = (props) => {
   };
 
   const value = {
+    isAuthenticated, login, logout,
     currentReader, setCurrentReader,
     activePage, setActivePage,
     language, setLanguage,
@@ -1267,6 +1300,71 @@ const FloatingActionButton = () => {
 
 // --- PAGE COMPONENTS ---
 
+const LoginPage = () => {
+  const { login, t } = useAppContext();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const logoUrl = 'https://georgesriver.spydus.com/api/maintenance/1.0/imagebrowser/image?blobName=a31cf63f-7e24-41d5-b1f8-c206bde45ce6.png';
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setError('');
+    const success = login(email, password);
+    if (!success) {
+      setError(t.invalidCredentials);
+    }
+  };
+
+  return (
+    <div className="bg-lightest min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <img src={logoUrl} alt="Georges River Council Logo" className="h-16 mx-auto mb-4" />
+        <h1 className="text-3xl font-display font-bold text-primary-dark text-center mb-2">{t.welcome}</h1>
+        <p className="text-center text-gray-600 font-sans mb-8">{t.loginPrompt}</p>
+
+        <div className="bg-white rounded-lg shadow-xl p-6">
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-sans font-medium text-gray-700">{t.email}</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+                placeholder="family@georgesriver.nsw.gov.au"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="password"className="block text-sm font-sans font-medium text-gray-700">{t.password}</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
+                placeholder="password123"
+                required
+              />
+            </div>
+            
+            {error && <p className="text-sm text-red-600 text-center font-sans">{error}</p>}
+
+            <div>
+              <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-md font-sans font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark transition-colors">
+                {t.login}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 const HomePage = () => {
   return (
     <div className="space-y-6">
@@ -1596,7 +1694,7 @@ const EventsPage = () => {
 };
 
 const ProfilePage = () => {
-  const { readers, t, setIsAddReaderModalOpen } = useAppContext();
+  const { readers, t, setIsAddReaderModalOpen, logout } = useAppContext();
 
   const getAgeRangeLabel = (ageRangeKey) => {
     switch (ageRangeKey) {
@@ -1624,6 +1722,9 @@ const ProfilePage = () => {
       <div className="mt-6 space-y-3">
          <button onClick={() => setIsAddReaderModalOpen(true)} className="w-full bg-secondary text-white font-sans font-bold py-3 rounded-lg hover:bg-secondary-dark">
             {t.addReader}
+        </button>
+        <button onClick={logout} className="w-full bg-lighter text-primary font-sans font-bold py-3 rounded-lg hover:bg-light">
+            {t.logout}
         </button>
       </div>
     </div>
@@ -1675,7 +1776,7 @@ const RecommendedPage = () => {
 // --- MAIN APP COMPONENT ---
 
 const App = () => {
-  const { activePage } = useAppContext();
+  const { activePage, isAuthenticated } = useAppContext();
 
   const renderPage = () => {
     switch (activePage) {
@@ -1689,6 +1790,10 @@ const App = () => {
       default: return <HomePage />;
     }
   };
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="bg-lightest min-h-screen">
